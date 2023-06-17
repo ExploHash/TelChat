@@ -1,13 +1,12 @@
 #include <iostream>
-//Include listener.cpp
-#include "listener.cpp"
+#include "../include/listener.hpp"
 
 int main() {
-    std::cout << "Hello World!";
+  std::cout << "Hello World!" << std::endl;
 
-    // Create listener
-    Listener listener;
+  // Create listener
+  Listener listener;
 
-    // Listen for connections
-    listener.run();
+  // Run listener
+  listener.run();
 }
