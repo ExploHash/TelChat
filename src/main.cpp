@@ -9,5 +9,5 @@ int main() {
     Listener listener;
 
     // Listen for connections
-    listener.listen_for_connections();
+    listener.run();
 }

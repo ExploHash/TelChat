@@ -4,11 +4,25 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <unistd.h>
+#include "connection.cpp"
+#include <thread>
 
 class Listener {
 public:
   int socket_fd;
-  void listen_for_connections() {
+  void run() {
+    // Initialize connection
+    initialize_connection();
+
+    // Listen for connections
+    listen_for_connections();
+
+    // Close connection
+    close(socket_fd);
+  }
+
+private:
+  void initialize_connection() {
     // Initialize socket
     socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd < 0) {
@@ -26,31 +40,38 @@ public:
       std::cout << "Error binding socket to port" << std::endl;
       exit(1);
     }
+  }
 
-    // Listen for connections
+  void listen_for_connections() {
     if (listen(socket_fd, 5) < 0) {
       std::cout << "Error listening for connections" << std::endl;
       exit(1);
     }
-
-    // Accept connections
+    // Listen for connections
     while (true) {
       struct sockaddr_in client_address;
       socklen_t client_address_size = sizeof(client_address);
+      std::cout << "Waiting for connection" << std::endl;
       int client_socket_fd = accept(socket_fd, (struct sockaddr*)&client_address, &client_address_size);
+      std::cout << "Connection accepted" << std::endl;
 
       if (client_socket_fd < 0) {
         std::cout << "Error accepting connection" << std::endl;
         exit(1);
       }
 
-      // Write hello world to client
-      char message[] = "Hello World\n";
-      write(client_socket_fd, message, sizeof(message));
-      close(client_socket_fd);
+      // Handle new connection in new thread
+      std::thread t1(&Listener::handle_new_connection, this, client_socket_fd);
+      t1.detach();
     }
+  }
 
-    // Close connection
-    close(socket_fd);
+  void handle_new_connection(int client_socket_fd) {
+    // Create connection
+    Connection connection;
+    connection.socket_fd = client_socket_fd;
+
+    // Run connection
+    connection.run();
   }
 };
