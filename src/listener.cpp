@@ -1,20 +1,7 @@
 #include "../include/listener.hpp"
 #include <iostream>
 
-int socket_fd;
-
-void signal_callback_handler(int signum) {
-  // Close socket
-  close(socket_fd);
-  std::cout << "Terminating program" << std::endl;
-
-  // Terminate program
-  exit(signum);
-}
-
 void Listener::run() {
-  signal(SIGINT, signal_callback_handler);
-
   // Initialize connection
   initialize_connection();
 
@@ -30,6 +17,12 @@ void Listener::initialize_connection() {
   socket_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (socket_fd < 0) {
     std::cout << "Error creating socket" << std::endl;
+    exit(1);
+  }
+
+  int reuse = 1;
+  if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) == -1) {
+    std::cout << "Error setting socket options" << std::endl;
     exit(1);
   }
 
@@ -73,7 +66,6 @@ void Listener::handle_new_connection(int client_socket_fd) {
   // Create connection
   Connection connection;
   // Log socket fd
-  std::cout << "Socket fd list: " << client_socket_fd << std::endl;
   connection.socket_fd = client_socket_fd;
 
   // Run connection

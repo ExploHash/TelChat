@@ -5,6 +5,7 @@
 #include <thread>
 #include <unistd.h>
 #include <string>
+#include "conversation.hpp"
 
 enum class RendererState {
   MESSAGE,
@@ -15,20 +16,23 @@ enum class RendererState {
 class Renderer {
 public:
   int socket_fd;
-  RendererState state = RendererState::MESSAGE;
-  // Conversation* conversation;
-  // std::mutex* conversation_mutex;
+  
+  Conversation* conversation;
+  std::mutex* conversation_mutex;
 
-  // std::string* message;
-  // std::mutex* message_mutex;
+  std::string* message;
+  std::mutex* message_mutex;
 
-  // std::string* input;
-  // std::mutex* input_mutex;
+  std::string* input;
+  std::mutex* input_mutex;
 
-  std::string message2 = "Hello world!";
+  RendererState* state;
+  std::mutex* state_mutex;
 
-  void run(int socket_fd);
+  void run();
   void render_message();
+  void render_input();
+  void render_chat();
 };
 
 #endif /* RENDERER_HPP */

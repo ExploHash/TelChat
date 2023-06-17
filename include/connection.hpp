@@ -16,7 +16,6 @@ public:
   Conversation conversation;
   std::mutex conversation_mutex;
 
-  Renderer renderer;
   std::thread renderer_thread;
 
   std::string message = "Hello world!";
@@ -25,9 +24,13 @@ public:
   std::string input = "";
   std::mutex input_mutex;
 
-  void run();
+  RendererState state = RendererState::INPUT;
+  std::mutex state_mutex;
 
-  void start_renderer();
+  void run();
+  void listen_for_input();
+
+  void start_renderer(int socket_fd);
 };
 
 #endif /* CONNECTION_HPP */

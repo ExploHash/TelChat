@@ -11,12 +11,12 @@
 #include <list>
 #include "connection.hpp"
 
-extern int socket_fd;
 
 void signal_callback_handler(int signum);
 
 class Listener {
 public:
+  int socket_fd;
   std::list<std::thread> threads;
 
   void run();
