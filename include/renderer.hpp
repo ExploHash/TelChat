@@ -5,34 +5,17 @@
 #include <thread>
 #include <unistd.h>
 #include <string>
-#include "conversation.hpp"
-
-enum class RendererState {
-  MESSAGE,
-  INPUT,
-  CHAT
-};
+#include <list>
+#include "conversation_message.hpp"
 
 class Renderer {
 public:
   int socket_fd;
-  
-  Conversation* conversation;
-  std::mutex* conversation_mutex;
 
-  std::string* message;
-  std::mutex* message_mutex;
-
-  std::string* input;
-  std::mutex* input_mutex;
-
-  RendererState* state;
-  std::mutex* state_mutex;
-
-  void run();
-  void render_message();
-  void render_input();
-  void render_chat();
+  void render_message(std::string message);
+  void render_input(std::string question);
+  void render_chat(std::list <conversation_message> messages, std::string input);
+  void empty_screen();
 };
 
 #endif /* RENDERER_HPP */

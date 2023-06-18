@@ -1,73 +1,41 @@
 #include "../include/renderer.hpp"
 #include <iostream>
 
-void Renderer::run() {
-  while (true)
-  {
-    // Clear connection screen
-    std::string clear = "\033[2J\033[1;1H";
-    write(socket_fd, clear.c_str(), sizeof(clear));
-
-    // Lock state mutex
-    state_mutex->lock();
-
-    // Copy state
-    RendererState state_copy = *this->state;
-
-    // Unlock state mutex
-    state_mutex->unlock();
-    
-    switch (state_copy)
-    {
-    case RendererState::MESSAGE:
-      render_message();
-      break;
-    case RendererState::INPUT:
-      render_input();
-      break;
-    case RendererState::CHAT:
-      render_chat();
-      break;
-    default:
-      break;
-    }
-    
-
-    // Sleep for 50ms
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  }
-}
-
-void Renderer::render_message() {
-  // Lock message mutex
-  message_mutex->lock();
-
-  // Write message from mutex
-  write(socket_fd, message->c_str(), sizeof(*message));
-
-  // Unlock message mutex
-  message_mutex->unlock();
+void Renderer::empty_screen() {
+  std::string empty_screen = "\033[2J\033[1;1H";
+  write(socket_fd, empty_screen.c_str(), sizeof(empty_screen));
 };
 
-void Renderer::render_input() {
+void Renderer::render_message(std::string message) {
+  empty_screen();
+
+  // Write message
+  write(socket_fd, message.c_str(), sizeof(message));
+};
+
+void Renderer::render_input(std::string question) {
+  empty_screen();
+
   // Write question
-  std::string question = "What is your name? ";
   write(socket_fd, question.c_str(), sizeof(question));
-
-  // Lock input mutex
-  input_mutex->lock();
-
-  // Write input from mutex
-  write(socket_fd, input->c_str(), sizeof(*input));
-
-  // Unlock input mutex
-  input_mutex->unlock();
 };
 
-void Renderer::render_chat() {
-  // Lock conversation mutex
-  // std::scoped_lock<std::mutex> lock(*conversation_mutex);
+void Renderer::render_chat(std::list <conversation_message> messages, std::string input) {
+  // Loop through messages
+  for (auto const& message : messages)
+  {
+    // Write message
+    write(socket_fd, message.sender_name.c_str(), sizeof(message.sender_name));
+    write(socket_fd, ": ", sizeof(": "));
+    write(socket_fd, message.text.c_str(), sizeof(message.text));
+    write(socket_fd, "\n", sizeof("\n"));
+  }
 
-  // Write conversation
-  // write(socket_fd, conversation->get().c_str(), sizeof(conversation->get()));
+  // Write line
+  std::string line = "----------------------------------------\n";
+  write(socket_fd, line.c_str(), sizeof(line));
+
+  // Write input
+  std::string input_prompt = "You: ";
+  write(socket_fd, input_prompt.c_str(), sizeof(input_prompt));
 };

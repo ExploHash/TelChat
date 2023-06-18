@@ -4,6 +4,7 @@
 #include <string>
 #include <queue>
 #include <mutex>
+#include <thread>
 
 enum class ConnectionMessageType {
   MESSAGE,
@@ -23,6 +24,7 @@ public:
   std::string username_connected_to;
   std::queue<connection_message> messages;
   std::mutex messages_mutex;
+  std::thread connection_thread;
 
   void add_message(ConnectionMessageType type, std::string message_text);
 };

@@ -2,6 +2,9 @@
 #include <iostream>
 
 void Listener::run() {
+  // Initialize connection manager
+  connection_manager_thread = std::thread(&Listener::initialize_connection_manager, this);
+
   // Initialize connection
   initialize_connection();
 
@@ -56,18 +59,25 @@ void Listener::listen_for_connections() {
       exit(1);
     }
 
-    // Handle new connection in new thread
-    std::thread t1(&Listener::handle_new_connection, this, client_socket_fd);
-    threads.push_back(std::move(t1));
+    // Handle new connection
+    handle_new_connection(client_socket_fd);
+
   }
 }
 
-void Listener::handle_new_connection(int client_socket_fd) {
-  // Create connection
-  Connection connection;
-  // Log socket fd
-  connection.socket_fd = client_socket_fd;
+void Listener::initialize_connection_manager() {
+  ConnectionManager connection_manager;
+  connection_manager.messages = &connection_manager_messages;
+  connection_manager.messages_mutex = &connection_manager_messages_mutex;
+  connection_manager.run();
+}
 
-  // Run connection
-  connection.run();
+void Listener::handle_new_connection(int client_socket_fd) {
+  // Create new connection
+  connection_manager_message message;
+  message.type = ConnectionManagerMessageType::NEW_CONNECTION;
+  message.socket = client_socket_fd;
+  // Send message to connection manager
+  std::scoped_lock lock(connection_manager_messages_mutex);
+  connection_manager_messages.push(message);
 }

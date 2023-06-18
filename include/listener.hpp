@@ -10,19 +10,20 @@
 #include <thread>
 #include <list>
 #include "connection.hpp"
-
-
-void signal_callback_handler(int signum);
+#include "connection_manager.hpp"
 
 class Listener {
 public:
-  int socket_fd;
-  std::list<std::thread> threads;
-
   void run();
 
 private:
+  int socket_fd;
+  std::thread connection_manager_thread;
+  std::queue <connection_manager_message> connection_manager_messages;
+  std::mutex connection_manager_messages_mutex;
+
   void initialize_connection();
+  void initialize_connection_manager();
   void listen_for_connections();
   void handle_new_connection(int client_socket_fd);
 };
