@@ -8,6 +8,8 @@ void ConnectionManager::run() {
     check_for_manager_messages();
     // Check for new messages from connections
     check_for_connection_messages();
+    // Sleep for 100ms
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 }
 
