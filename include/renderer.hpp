@@ -14,7 +14,7 @@ public:
 
   void render_message(std::string message);
   void render_input(std::string question);
-  void render_chat(std::list <conversation_message> messages, std::string input);
+  void render_chat(std::list <conversation_message> messages, bool preserve_input = false);
   void empty_screen();
 };
 

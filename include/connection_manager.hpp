@@ -28,8 +28,10 @@ private:
   void check_for_manager_messages();
   void check_for_connection_messages();
   void handle_manager_message(connection_manager_message message);
-  void handle_connection_message(connection_message message);
+  void handle_connection_message(connection_message message, ConnectionState * current_connection_state);
   void spawn_new_connection(int socket_fd, std::queue <connection_message> * messages, std::mutex * messages_mutex);
+  ConnectionState * find_connection_state_by_username(std::string username);
+  ConnectionState * find_connection_state_by_username_connected_to(std::string username);
 };
 
 #endif /* CONNECTION_MANAGER_HPP */
