@@ -25,12 +25,11 @@ void Connection::run() {
 }
 
 void Connection::check_connection_messages() {
-  std::scoped_lock<std::mutex> lock(*messages_mutex);
+  std::scoped_lock<std::mutex> lock(*messages_to_connection_mutex);
 
-  while (!messages->empty()) {
-    std::cout << "Handling message" << std::endl;
-    connection_message message = messages->front();
-    messages->pop();
+  while (!messages_to_connection->empty()) {
+    connection_message message = messages_to_connection->front();
+    messages_to_connection->pop();
 
     handle_connection_message(message);
   }
@@ -41,6 +40,7 @@ void Connection::handle_connection_message(connection_message message) {
   switch (message.type)
   {
   case ConnectionMessageType::MESSAGE_RECEIVE:
+    std::cout << "[" << username << "] Handling message: " << message.text << std::endl;
     // Push to conversation_messages
     add_conversation_message(message.text, username_connected_to);
 
@@ -73,14 +73,14 @@ void Connection::check_connection_input_messages() {
 }
 
 void Connection::send_message(std::string message) {
-  std::scoped_lock<std::mutex> lock(*messages_mutex);
+  std::scoped_lock<std::mutex> lock(*messages_to_manager_mutex);
   //Create connection_message struct
   connection_message connection_message;
   connection_message.type = ConnectionMessageType::MESSAGE_SEND;
   connection_message.text = message;
 
   //Push to queue
-  messages->push(connection_message);
+  messages_to_manager->push(connection_message);
 
   // Add to conversation_messages
   add_conversation_message(message, username);
@@ -102,13 +102,13 @@ void Connection::handle_input(std::string input) {
   case ConnectionStatus::CHOOSE_PERSON:
     if (input != "") {
       // Create connection_message struct
-      std::scoped_lock<std::mutex> lock(*messages_mutex);
+      std::scoped_lock<std::mutex> lock(*messages_to_manager_mutex);
       connection_message connection_message;
       connection_message.type = ConnectionMessageType::CONVERSATION_WANTS;
       connection_message.text = input;
 
       // Push to queue
-      messages->push(connection_message);
+      messages_to_manager->push(connection_message);
 
       // Set status to SHOW_MESSAGE
       status = ConnectionStatus::SHOW_MESSAGE;
@@ -123,6 +123,7 @@ void Connection::handle_input(std::string input) {
       send_message(input);
     }
     render_needed = true;
+    chat_preserve_input = false;
     break;
 
   default:
@@ -160,14 +161,14 @@ void Connection::render() {
 }
 
 void Connection::send_username(std::string username) {
-  std::scoped_lock<std::mutex> lock(*messages_mutex);
+  std::scoped_lock<std::mutex> lock(*messages_to_manager_mutex);
   // Create connection_message struct
   connection_message connection_message;
   connection_message.type = ConnectionMessageType::USERNAME;
   connection_message.text = username;
 
   // Push to queue
-  messages->push(connection_message);
+  messages_to_manager->push(connection_message);
 }
 
 

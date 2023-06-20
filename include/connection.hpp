@@ -33,8 +33,11 @@ public:
   
   std::list <conversation_message> conversation_messages; // Only keep the last 7 messages
 
-  std::queue <connection_message> * messages;
-  std::mutex * messages_mutex;
+  std::queue <connection_message> * messages_to_connection;
+  std::mutex * messages_to_connection_mutex;
+
+  std::queue <connection_message> * messages_to_manager;
+  std::mutex * messages_to_manager_mutex;
 
   std::queue <std::string> connection_input_messages;
   std::mutex connection_input_messages_mutex;

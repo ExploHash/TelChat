@@ -25,8 +25,10 @@ public:
   bool is_connected = false;
   std::string username;
   std::string username_connected_to;
-  std::queue<connection_message> messages;
-  std::mutex messages_mutex;
+  std::queue<connection_message> messages_to_manager;
+  std::mutex messages_to_manager_mutex;
+  std::queue<connection_message> messages_to_connection;
+  std::mutex messages_to_connection_mutex;
   std::thread connection_thread;
 };
 

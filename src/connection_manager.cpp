@@ -19,6 +19,7 @@ void ConnectionManager::check_for_manager_messages() {
   if (!messages->empty()) {
     // Get message
     connection_manager_message message = messages->front();
+    
     messages->pop();
     // Handle message
     handle_manager_message(message);
@@ -32,18 +33,16 @@ void ConnectionManager::check_for_connection_messages() {
     ConnectionState* connection = connection_ptr.get();
 
     // Check for new messages
-    connection->messages_mutex.lock();
-    if (!connection->messages.empty()) {
+    std::scoped_lock lock(connection->messages_to_manager_mutex);
+    if (!connection->messages_to_manager.empty()) {
       // Get message
-      connection_message message = connection->messages.front();
-      connection->messages.pop();
+      connection_message message = connection->messages_to_manager.front();
+
+      connection->messages_to_manager.pop();
       // Delete lock
-      connection->messages_mutex.unlock();
-      // Handle message
+      connection->messages_to_manager_mutex.unlock();
+    // Handle message
       handle_connection_message(message, connection);
-    }else{
-      // Delete lock
-      connection->messages_mutex.unlock();
     }
   }
 
@@ -58,9 +57,11 @@ void ConnectionManager::handle_connection_message(connection_message message, Co
     ConnectionState* other_connection_state = find_connection_state_by_username(other_username);
 
     // Push message to other_connection_state
-    std::scoped_lock lock(other_connection_state->messages_mutex);
+    std::scoped_lock lock(other_connection_state->messages_to_connection_mutex);
     message.type = ConnectionMessageType::MESSAGE_RECEIVE;
-    other_connection_state->messages.push(message);
+    other_connection_state->messages_to_connection.push(message);
+
+    std::cout << "Message send: " << message.text << " to " << other_username << std::endl;
     break;
   }
   case ConnectionMessageType::USERNAME: {
@@ -81,7 +82,8 @@ void ConnectionManager::handle_connection_message(connection_message message, Co
     // Check if other_connection_state is not nullptr
     if (other_connection_state == nullptr) {
       std::cout << "Did not find connectionstate" << std::endl;
-    } else if (other_connection_state->username_connected_to == current_connection_state->username) {
+    }
+    else if (other_connection_state->username_connected_to == current_connection_state->username) {
       std::cout << "Found connectionstate AAAAA" << std::endl;
       // Set username_connected_to
       other_connection_state->username_connected_to = current_connection_state->username;
@@ -89,13 +91,18 @@ void ConnectionManager::handle_connection_message(connection_message message, Co
       current_connection_state->is_connected = true;
 
       // Send message to current_connection_state
-      std::scoped_lock lock(current_connection_state->messages_mutex);
-      message.type = ConnectionMessageType::CONVERSATION_ACCEPTED;
-      current_connection_state->messages.push(message);
+      std::scoped_lock lock(current_connection_state->messages_to_connection_mutex);
+      connection_message message_accepted_1;
+      message_accepted_1.type = ConnectionMessageType::CONVERSATION_ACCEPTED;
+      message_accepted_1.text = other_connection_state->username;
+      current_connection_state->messages_to_connection.push(message_accepted_1);
 
       // Send message to other_connection_state
-      message.type = ConnectionMessageType::CONVERSATION_ACCEPTED;
-      other_connection_state->messages.push(message);
+      std::scoped_lock lock2(other_connection_state->messages_to_connection_mutex);
+      connection_message message_accepted_2;
+      message_accepted_2.type = ConnectionMessageType::CONVERSATION_ACCEPTED;
+      message_accepted_2.text = current_connection_state->username;
+      other_connection_state->messages_to_connection.push(message_accepted_2);
     }
 
     break;
@@ -111,23 +118,33 @@ void ConnectionManager::handle_manager_message(connection_manager_message messag
   switch (message.type) {
   case ConnectionManagerMessageType::NEW_CONNECTION:
     // Create connectionstate
-    auto connection_state(std::make_unique<ConnectionState>());
+    auto connection_state_temp(std::make_unique<ConnectionState>());
+    connections.push_back(std::move(connection_state_temp));
+
+    // Get connectionstate pointer
+    ConnectionState* connection = connections.back().get();
 
     // Create connection
-    connection_state->connection_thread = std::thread(&ConnectionManager::spawn_new_connection, this, message.socket, &connection_state->messages, &connection_state->messages_mutex);
-
-    // Add connectionstate to list
-    connections.push_back(std::move(connection_state));
-
+    connection->connection_thread = std::thread(
+      &ConnectionManager::spawn_new_connection,
+      this,
+      message.socket,
+      &connection->messages_to_manager,
+      &connection->messages_to_manager_mutex,
+      &connection->messages_to_connection,
+      &connection->messages_to_connection_mutex
+    );
     break;
   }
 }
 
-void ConnectionManager::spawn_new_connection(int socket_fd, std::queue <connection_message>* messages, std::mutex* messages_mutex) {
+void ConnectionManager::spawn_new_connection(int socket_fd, std::queue <connection_message>* messages_to_manager, std::mutex* messages_to_manager_mutex, std::queue <connection_message>* messages_to_connection, std::mutex* messages_to_connection_mutex) {
   // Create connection
   Connection connection;
-  connection.messages = messages;
-  connection.messages_mutex = messages_mutex;
+  connection.messages_to_manager = messages_to_manager;
+  connection.messages_to_manager_mutex = messages_to_manager_mutex;
+  connection.messages_to_connection = messages_to_connection;
+  connection.messages_to_connection_mutex = messages_to_connection_mutex;
   // Log socket fd
   connection.socket_fd = socket_fd;
   // Run connection
