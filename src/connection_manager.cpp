@@ -9,6 +9,7 @@ void ConnectionManager::run() {
     // Check for new messages from connections
     check_for_connection_messages();
     // Sleep for 100ms
+    std::cout << "Sleeping for 100ms" << std::endl;
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 }
@@ -19,7 +20,7 @@ void ConnectionManager::check_for_manager_messages() {
   if (!messages->empty()) {
     // Get message
     connection_manager_message message = messages->front();
-    
+
     messages->pop();
     // Handle message
     handle_manager_message(message);
@@ -29,6 +30,7 @@ void ConnectionManager::check_for_manager_messages() {
 void ConnectionManager::check_for_connection_messages() {
   // Check for new messages from connections
   for (auto const& connection_ptr : connections) {
+    std::cout << "Checking for messages from connection" << std::endl;
     // First get raw pointer
     ConnectionState* connection = connection_ptr.get();
 
@@ -41,20 +43,22 @@ void ConnectionManager::check_for_connection_messages() {
       connection->messages_to_manager.pop();
       // Delete lock
       connection->messages_to_manager_mutex.unlock();
-    // Handle message
-      handle_connection_message(message, connection);
+      // Handle message
+      bool continue_loop = handle_connection_message(message, connection);
+      std::cout << "Continue loop: " << continue_loop << std::endl;
+      if (!continue_loop) break;
     }
   }
 
 }
 
-void ConnectionManager::handle_connection_message(connection_message message, ConnectionState* current_connection_state) {
+bool ConnectionManager::handle_connection_message(connection_message message, ConnectionState* current_connection_state) {
   switch (message.type)
   {
   case ConnectionMessageType::MESSAGE_SEND: {
     std::string other_username = current_connection_state->username_connected_to;
     // Find connectionstate by username
-    ConnectionState* other_connection_state = find_connection_state_by_username(other_username);
+    ConnectionState* other_connection_state = find_connection_state_by_username(other_username, true);
 
     // Push message to other_connection_state
     std::scoped_lock lock(other_connection_state->messages_to_connection_mutex);
@@ -77,7 +81,7 @@ void ConnectionManager::handle_connection_message(connection_message message, Co
     std::cout << "Conversation wants: " << message.text << std::endl;
 
     // Try to find connectionstate by username
-    ConnectionState* other_connection_state = find_connection_state_by_username(message.text);
+    ConnectionState* other_connection_state = find_connection_state_by_username(message.text, false);
 
     // Check if other_connection_state is not nullptr
     if (other_connection_state == nullptr) {
@@ -108,9 +112,49 @@ void ConnectionManager::handle_connection_message(connection_message message, Co
     break;
   }
 
+  case ConnectionMessageType::WANTS_LEAVE: {
+    std::cout << "Wants shutdown" << std::endl;
+    // Find other connection
+    ConnectionState* other_connection_state = find_connection_state_by_username(current_connection_state->username_connected_to, true);
+    // Send shutdown to both connections
+
+    // Send message to current_connection_state
+    std::scoped_lock lock(current_connection_state->messages_to_connection_mutex);
+    connection_message message_shutdown_1;
+    message_shutdown_1.type = ConnectionMessageType::SHUTDOWN;
+    current_connection_state->messages_to_connection.push(message_shutdown_1);
+
+    current_connection_state->connection_thread.detach();
+
+    // Send message to other_connection_state
+    std::scoped_lock lock2(other_connection_state->messages_to_connection_mutex);
+    connection_message message_shutdown_2;
+    message_shutdown_2.type = ConnectionMessageType::SHUTDOWN;
+    other_connection_state->messages_to_connection.push(message_shutdown_2);
+
+    other_connection_state->connection_thread.detach();
+
+    //Set both connections to disconnected
+    current_connection_state->is_connected = false;
+    other_connection_state->is_connected = false;
+  }
+
+  case ConnectionMessageType::SHUTDOWN_SUCCESSFULL: {
+    // Make copy of username
+    std::string username = current_connection_state->username;
+    // Remove current_connection_state variable
+    current_connection_state = nullptr;
+    // Delete connectionstate
+    delete_connection_state_by_username(username);
+    
+    return false;
+  }
+
   default:
     break;
   }
+
+  return true;
 }
 
 void ConnectionManager::handle_manager_message(connection_manager_message message) {
@@ -149,9 +193,11 @@ void ConnectionManager::spawn_new_connection(int socket_fd, std::queue <connecti
   connection.socket_fd = socket_fd;
   // Run connection
   connection.run();
+
+  std::cout << "Connection ended" << std::endl;
 }
 
-ConnectionState* ConnectionManager::find_connection_state_by_username(std::string username) {
+ConnectionState* ConnectionManager::find_connection_state_by_username(std::string username, bool is_connected) {
   for (auto const& connection_ptr : connections) {
     // First get raw pointer
     ConnectionState* connection = connection_ptr.get();
@@ -159,7 +205,7 @@ ConnectionState* ConnectionManager::find_connection_state_by_username(std::strin
     // Check if username matches
     std::cout << "Cur Username: " << connection->username << std::endl;
     std::cout << "wants Username: " << username << std::endl;
-    if (connection->username == username) {
+    if (connection->username == username && connection->is_connected == is_connected) {
       return connection;
     }
   }
@@ -177,4 +223,25 @@ ConnectionState* ConnectionManager::find_connection_state_by_username_connected_
     }
   }
   return nullptr;
+}
+
+void ConnectionManager::delete_connection_state_by_username(std::string username) {
+  std::cout << "Delete connection state" << std::endl;
+  std::cout << "Username: " << username << std::endl;
+  auto iter = connections.begin();
+  while (iter != connections.end())
+  {
+    if ((*iter)->username == username)
+    {
+      std::cout << "Found connectionstate" << std::endl;
+      std::cout << "Username: " << (*iter)->username << std::endl;
+      connections.erase(iter);
+      std:: cout << "Deleted connectionstate" << std::endl;
+      break;
+    }
+    else
+    {
+      ++iter;
+    }
+  }
 }

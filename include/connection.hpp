@@ -23,6 +23,8 @@ public:
   std::string username;
   std::string username_connected_to;
   std::string message_to_show;
+  bool initiated_shutdown = false;
+  bool is_running = true;
 
   Renderer renderer;
 
@@ -39,8 +41,11 @@ public:
   std::queue <connection_message> * messages_to_manager;
   std::mutex * messages_to_manager_mutex;
 
-  std::queue <std::string> connection_input_messages;
-  std::mutex connection_input_messages_mutex;
+  std::queue <InputReaderMessage> messages_from_input_reader;
+  std::mutex messages_from_input_reader_mutex;
+
+  std::queue <InputReaderMessage> messages_to_input_reader;
+  std::mutex messages_to_input_reader_mutex;
 
   std::thread input_reader_thread;
 
@@ -51,9 +56,12 @@ public:
   void add_conversation_message(std::string message, std::string sender_name);
   void send_message(std::string message);
   void send_username(std::string username);
+  void send_leave();
   void render();
   void handle_input(std::string input);
   void spawn_input_reader();
+  void shutdown_prepare();
+  void shutdown();
 };
 
 #endif /* CONNECTION_HPP */

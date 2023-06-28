@@ -32,38 +32,45 @@ void Renderer::render_chat(std::list <conversation_message> messages, bool prese
     write(socket_fd, save_cursor_position.c_str(), save_cursor_position.size());
     // Move cursor to 0,0
     std::string move_cursor_up = "\033[0;0H";
-
     write(socket_fd, move_cursor_up.c_str(), move_cursor_up.size());
+    // Clear 6 lines
+    for (int i = 0; i < 6; i++) {
+      std::string clear_line = "\033[K\n";
+      write(socket_fd, clear_line.c_str(), clear_line.size());
+    }
   }
 
+  // std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-  int rendered_messages = 0;
 
-  // First render saved messages
+  // Render saved messages
+  std::string move_cursor_up = "\033[0;0H";
+  write(socket_fd, move_cursor_up.c_str(), move_cursor_up.size());
+
   for (auto message : messages) {
-    // Clear line
-    std::string clear_line = "\033[K";
-    write(socket_fd, clear_line.c_str(), clear_line.size());
     // Write message
     std::string message_text = message.sender_name + ": " + message.text + "\n";
     write(socket_fd, message_text.c_str(), message_text.size());
-
-    rendered_messages++;
+    // Send to console as well
+    std::cout << message_text.c_str() << std::endl;
   }
-
-  // Write remaining lines
-  for (int i = rendered_messages; i < 7; i++) {
-    std::string empty_line = "\n";
-    write(socket_fd, empty_line.c_str(), empty_line.size());
-  }
-
-  // Write line
-  std::string line = "---------\n";
-  write(socket_fd, line.c_str(), line.size());
 
 
   // Write input
   if (!preserve_input) {
+    // Move cursor to 6,0
+    std::string move_cursor_up = "\033[7;0H";
+    write(socket_fd, move_cursor_up.c_str(), move_cursor_up.size());
+
+    // Write line
+    std::string line = "---------\n";
+    write(socket_fd, line.c_str(), line.size());
+
+    // Write options
+    std::string options = ":quit <to quit>\n";
+    write(socket_fd, options.c_str(), options.size());
+  
+
     std::string input_prompt = "You: ";
     write(socket_fd, input_prompt.c_str(), input_prompt.size());
   } else {

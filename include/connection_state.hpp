@@ -12,7 +12,10 @@ enum class ConnectionMessageType {
   USERNAME, // Client chose a username
   CONVERSATION_WANTS, // Client wants to connect to a username
   CONVERSATION_ACCEPTED, // Server accepted the conversation
-  INPUT_RECEIVED // Server received input from client
+  INPUT_RECEIVED, // Server received input from client
+  WANTS_LEAVE, // Client wants to leave conversation
+  SHUTDOWN, // Server wants conversation to shutdown
+  SHUTDOWN_SUCCESSFULL // Client successfully shut down
 };
 
 struct connection_message {
@@ -23,6 +26,7 @@ struct connection_message {
 class ConnectionState {
 public:
   bool is_connected = false;
+  bool is_active = true;
   std::string username;
   std::string username_connected_to;
   std::queue<connection_message> messages_to_manager;

@@ -73,6 +73,9 @@ void Listener::initialize_connection_manager() {
 }
 
 void Listener::handle_new_connection(int client_socket_fd) {
+  // Set socket to non-blocking
+  int flags = fcntl(client_socket_fd, F_GETFL, 0);
+  fcntl(client_socket_fd, F_SETFL, flags | O_NONBLOCK);
   // Create new connection
   connection_manager_message message;
   message.type = ConnectionManagerMessageType::NEW_CONNECTION;

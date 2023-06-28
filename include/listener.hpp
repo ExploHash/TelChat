@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <thread>
 #include <list>
+#include <fcntl.h>
 #include "connection.hpp"
 #include "connection_manager.hpp"
 
